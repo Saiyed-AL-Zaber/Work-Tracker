@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Work Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+[hidden] { display: none !important; }
+body { margin: 0; }
+/* Layout: one narrow column like a desk logbook. Week strip on top, the open day below, week report folded at the bottom. */
+:root {
+  --bg: #F1F3F2;
+  --surface: #FFFFFF;
+  --ink: #14201C;
+  --muted: #5B6862;
+  --line: #D8DEDB;
+  --accent: #2347D9;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3E8FB;
+  --done: #2C7A57;
+  --bar: #B9C2BE;
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1311;
+    --surface: #161D1A;
+    --ink: #E7EEEA;
+    --muted: #9AA7A1;
+    --line: #28322E;
+    --accent: #8CA3FF;
+    --accent-ink: #0E1311;
+    --accent-soft: #1C2550;
+    --done: #62C593;
+    --bar: #3A4742;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1311;
+  --surface: #161D1A;
+  --ink: #E7EEEA;
+  --muted: #9AA7A1;
+  --line: #28322E;
+  --accent: #8CA3FF;
+  --accent-ink: #0E1311;
+  --accent-soft: #1C2550;
+  --done: #62C593;
+  --bar: #3A4742;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* top bar */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+/* week strip */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cell {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0;
+}
+.cell .wd { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.cell .dn { font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.1; }
+.cell .hrs { font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cell .meter { width: 70%; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+.cell .meter i { display: block; height: 100%; background: var(--bar); }
+.cell.off .dn { color: var(--muted); }
+.cell.today .dn::after { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 3px; vertical-align: super; }
+.cell.sel { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cell.sel .wd, .cell.sel .hrs, .cell.sel.off .dn { color: var(--accent-ink); opacity: .85; }
+.cell.sel .meter { background: color-mix(in srgb, var(--accent-ink) 30%, transparent); }
+.cell.sel .meter i { background: var(--accent-ink); }
+.cell.sel.today .dn::after { background: var(--accent-ink); }
+
+/* day header */
+.dayhead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 20px; flex-wrap: wrap; }
+.dayhead h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 5vw, 38px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.dayhead .yr { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 4px; }
+.nav { display: flex; gap: 6px; }
+.btn {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 7px 12px; font-size: 14px; font-weight: 500;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.counts { display: flex; gap: 8px 22px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.counts b { color: var(--ink); font-weight: 500; }
+
+/* add form */
+.add { display: grid; grid-template-columns: minmax(0, 1fr) 170px 92px auto; gap: 8px; }
+.field {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 9px 11px; width: 100%; min-width: 0;
+}
+.field::placeholder { color: var(--muted); opacity: .8; }
+.field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+
+/* task list */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.tasks { list-style: none; margin: 0; padding: 0; }
+.task {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 28px; align-items: center;
+  gap: 8px 12px; padding: 10px 12px; border-top: 1px solid var(--line);
+}
+.task:first-child { border-top: 0; }
+.chk {
+  appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0;
+  border: 1.5px solid var(--muted); border-radius: 4px; background: transparent; cursor: pointer; display: grid; place-content: center;
+}
+.chk:checked { background: var(--done); border-color: var(--done); }
+.chk:checked::after { content: ""; width: 5px; height: 10px; border: solid var(--surface); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+.bare { background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 4px 6px; width: 100%; min-width: 0; }
+.bare:hover { border-color: var(--line); }
+.bare:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+.t-text { font-weight: 500; }
+.is-done .t-text { text-decoration: line-through; color: var(--muted); font-weight: 400; }
+.t-meta { display: flex; align-items: center; gap: 6px; }
+.t-proj { width: 130px; font-size: 13px; color: var(--muted); }
+.t-hours { display: flex; align-items: center; gap: 2px; font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+.t-hours input { width: 56px; text-align: right; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.del { background: transparent; border: 0; color: var(--muted); font-size: 20px; line-height: 1; width: 28px; height: 28px; border-radius: 4px; }
+.del:hover { background: var(--accent-soft); color: var(--ink); }
+.empty { padding: 28px 18px; text-align: center; color: var(--muted); }
+.empty strong { display: block; font-family: var(--font-display); font-size: 18px; color: var(--ink); margin-bottom: 4px; }
+
+.carry { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+
+/* notes + report */
+.label { font-family: var(--font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+textarea.field { resize: vertical; min-height: 96px; line-height: 1.5; }
+details.report { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+details.report summary { cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; gap: 10px; }
+details.report summary span { font-family: var(--font-mono); font-weight: 400; font-size: 12px; color: var(--muted); }
+.report-body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.report-body textarea { font-family: var(--font-mono); font-size: 12.5px; min-height: 180px; }
+.report-actions { display: flex; align-items: center; gap: 10px; }
+.hint { font-size: 13px; color: var(--muted); }
+
+.backup { margin-top: 4px; }
+
+@media (max-width: 640px) {
+  .add { grid-template-columns: minmax(0, 1fr) 90px; }
+  .add input[name="text"] { grid-column: 1 / -1; }
+  .add .btn { grid-column: 1 / -1; }
+  .task { grid-template-columns: 22px minmax(0, 1fr) 28px; grid-template-areas: "c t d" ". m ."; }
+  .task .chk { grid-area: c; }
+  .task .t-text { grid-area: t; }
+  .task .del { grid-area: d; }
+  .task .t-meta { grid-area: m; }
+  .t-proj { flex: 1; width: auto; }
+  .cell .dn { font-size: 18px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cell, .btn { transition: background-color .12s, border-color .12s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <span class="brand">Work log</span>
+    <span class="status" id="status" role="status">Loading…</span>
+  </div>
+
+  <div class="week" id="week" aria-label="Week"></div>
+
+  <div class="dayhead">
+    <div>
+      <h1 id="dayTitle"></h1>
+      <div class="yr" id="dayYear"></div>
+    </div>
+    <div class="nav">
+      <button class="btn" id="prev" aria-label="Previous day">&larr; Prev</button>
+      <button class="btn" id="todayBtn">Today</button>
+      <button class="btn" id="next" aria-label="Next day">Next &rarr;</button>
+    </div>
+  </div>
+
+  <div class="counts" id="counts"></div>
+
+  <form class="add" id="addForm" autocomplete="off">
+    <input class="field" name="text" id="newText" placeholder="What did you work on?" aria-label="New task" required>
+    <input class="field" name="project" id="newProject" list="projects" placeholder="Project" aria-label="Project">
+    <input class="field" name="hours" id="newHours" type="number" min="0" step="0.25" placeholder="Hours" aria-label="Hours spent">
+    <button class="btn primary" type="submit">Add</button>
+  </form>
+  <datalist id="projects"></datalist>
+
+  <div id="carry"></div>
+
+  <div class="card" id="listCard"><ul class="tasks" id="tasks"></ul></div>
+
+  <div>
+    <label class="label" for="note">Notes for the day</label>
+    <textarea class="field" id="note" placeholder="Blockers, decisions, what to pick up tomorrow"></textarea>
+  </div>
+
+  <details class="report" id="report">
+    <summary>Week summary <span id="weekTotals"></span></summary>
+    <div class="report-body">
+      <textarea class="field" id="reportText" readonly aria-label="Week summary text"></textarea>
+      <div class="report-actions">
+        <button class="btn" id="copyReport" type="button">Copy summary</button>
+        <span class="hint" id="copyHint">Paste it into your weekly report or status email.</span>
+      </div>
+    </div>
+  </details>
+
+  <div class="backup">
+    <span class="label">Backup</span>
+    <div class="report-actions">
+      <button class="btn" id="exportBtn" type="button">Export backup</button>
+      <button class="btn" id="importBtn" type="button">Import backup</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <span class="hint" id="backupHint">Your log lives in this browser. Export a copy now and then.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var LS_KEY = 'daily-work-log-v1';
+  var DAYS_LONG = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DAY_TARGET_H = 8;
+
+  function $(s) { return document.querySelector(s); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parse(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function addDays(s, n) { var d = parse(s); d.setDate(d.getDate() + n); return fmt(d); }
+  function today() { return fmt(new Date()); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function hnum(v) { var n = parseFloat(v); return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0; }
+  function hfmt(h) { return (Math.round(h * 100) / 100) + 'h'; }
+  function shortDate(s) { var d = parse(s); return DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()]; }
+
+  var days = {};
+  var sel = today();
+  var loaded = false;
+  var col = null;
+  var inflight = {};
+  var chains = {};
+  var noteTimer = null;
+
+  function getDay(d) { return days[d] || { tasks: [], note: '' }; }
+  function dayHours(day) { return day.tasks.reduce(function (a, t) { return a + hnum(t.h); }, 0); }
+  function dayDone(day) { return day.tasks.filter(function (t) { return t.done; }).length; }
+  function weekStart(s) { var d = parse(s); d.setDate(d.getDate() - d.getDay()); return fmt(d); }
+
+  /* ---------- storage ---------- */
+  function setStatus(t) { $('#status').textContent = t; }
+
+  function saveLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(days)); return true; } catch (e) { return false; }
+  }
+  function loadLocal() {
+    try { var raw = localStorage.getItem(LS_KEY); if (raw) days = JSON.parse(raw) || {}; } catch (e) { days = {}; }
+  }
+  function fallbackToLocal() {
+    col = null;
+    var ok = saveLocal();
+    setStatus(ok ? 'Saved in this browser only' : 'Not saved: storage is blocked');
+  }
+
+  function persist(d) {
+    if (!col) {
+      var ok = saveLocal();
+      setStatus(ok ? 'Saved in this browser only' : 'Not saved: storage is blocked');
+      return;
+    }
+    inflight[d] = (inflight[d] || 0) + 1;
+    setStatus('Saving…');
+    chains[d] = (chains[d] || Promise.resolve())
+      .then(function () { return col.doc(d).set(clone(days[d])); })
+      .then(function () { setStatus('Saved to your account'); })
+      .catch(function () { fallbackToLocal(); })
+      .then(function () { inflight[d] -= 1; });
+  }
+
+  function mutate(d, fn) {
+    var day = clone(getDay(d));
+    fn(day);
+    day.date = d;
+    days[d] = day;
+    render();
+    persist(d);
+  }
+
+  /* ---------- rendering ---------- */
+  function renderWeek() {
+    var start = weekStart(sel);
+    var html = '';
+    for (var i = 0; i < 7; i++) {
+      var ds = addDays(start, i);
+      var day = getDay(ds);
+      var h = dayHours(day);
+      var cls = 'cell';
+      if (ds === sel) cls += ' sel';
+      if (ds === today()) cls += ' today';
+      if (i === 5 || i === 6) cls += ' off';
+      var pct = Math.min(100, Math.round(h / DAY_TARGET_H * 100));
+      html += '<button class="' + cls + '" data-date="' + ds + '" aria-label="' + esc(DAYS_LONG[i] + ' ' + parse(ds).getDate()) + '" aria-pressed="' + (ds === sel) + '">' +
+        '<span class="wd">' + DAYS_SHORT[i] + '</span>' +
+        '<span class="dn">' + parse(ds).getDate() + '</span>' +
+        '<span class="hrs">' + (h ? hfmt(h) : '–') + '</span>' +
+        '<span class="meter"><i style="width:' + pct + '%"></i></span></button>';
+    }
+    $('#week').innerHTML = html;
+  }
+
+  function projectsList() {
+    var set = {};
+    Object.keys(days).forEach(function (k) {
+      days[k].tasks.forEach(function (t) { if (t.p) set[t.p] = 1; });
+    });
+    return Object.keys(set).sort();
+  }
+
+  function findCarry() {
+    var keys = Object.keys(days).filter(function (k) { return k < sel; }).sort().reverse();
+    for (var i = 0; i < keys.length; i++) {
+      var open = days[keys[i]].tasks.filter(function (t) { return !t.done; });
+      if (open.length) return { date: keys[i], count: open.length };
+    }
+    return null;
+  }
+
+  function renderDay() {
+    var d = parse(sel);
+    var day = getDay(sel);
+    $('#dayTitle').textContent = DAYS_LONG[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+    $('#dayYear').textContent = d.getFullYear() + (sel === today() ? ' · today' : '');
+    $('#todayBtn').hidden = sel === today();
+
+    var h = dayHours(day);
+    var weekH = 0, weekDone = 0, weekTasks = 0, start = weekStart(sel);
+    for (var i = 0; i < 7; i++) {
+      var wd = getDay(addDays(start, i));
+      weekH += dayHours(wd); weekDone += dayDone(wd); weekTasks += wd.tasks.length;
+    }
+    $('#counts').innerHTML =
+      '<span>Today <b>' + dayDone(day) + ' of ' + day.tasks.length + '</b> done</span>' +
+      '<span><b>' + hfmt(h) + '</b> logged</span>' +
+      '<span>This week <b>' + hfmt(weekH) + '</b>, ' + weekDone + ' done</span>';
+    $('#weekTotals').textContent = hfmt(weekH) + ' · ' + weekDone + '/' + weekTasks + ' done';
+
+    $('#projects').innerHTML = projectsList().map(function (p) { return '<option value="' + esc(p) + '">'; }).join('');
+
+    var carry = loaded ? findCarry() : null;
+    $('#carry').innerHTML = carry
+      ? '<div class="carry"><span>' + carry.count + ' unfinished from ' + esc(shortDate(carry.date)) + '</span>' +
+        '<button class="btn" id="carryBtn" data-from="' + carry.date + '">Bring into this day</button></div>'
+      : '';
+
+    var list = $('#tasks');
+    if (!loaded) {
+      list.innerHTML = '<li class="empty">Loading your log…</li>';
+    } else if (!day.tasks.length) {
+      list.innerHTML = '<li class="empty"><strong>Nothing logged for ' + DAYS_LONG[d.getDay()] + '</strong>Add what you worked on above. Hours are optional.</li>';
+    } else {
+      list.innerHTML = day.tasks.map(function (t) {
+        return '<li class="task' + (t.done ? ' is-done' : '') + '" data-id="' + esc(t.id) + '">' +
+          '<input type="checkbox" class="chk" data-act="toggle" aria-label="Mark done"' + (t.done ? ' checked' : '') + '>' +
+          '<input class="bare t-text" data-act="text" value="' + esc(t.text) + '" aria-label="Task">' +
+          '<div class="t-meta">' +
+            '<input class="bare t-proj" data-act="proj" list="projects" value="' + esc(t.p || '') + '" placeholder="Project" aria-label="Project">' +
+            '<label class="t-hours"><input class="bare" type="number" min="0" step="0.25" data-act="hours" value="' + (hnum(t.h) || '') + '" placeholder="0" aria-label="Hours"><span>h</span></label>' +
+          '</div>' +
+          '<button class="del" data-act="del" aria-label="Delete task">&times;</button></li>';
+      }).join('');
+    }
+
+    var note = $('#note');
+    if (document.activeElement !== note) note.value = day.note || '';
+
+    $('#reportText').value = buildReport();
+  }
+
+  function buildReport() {
+    var start = weekStart(sel);
+    var lines = [];
+    var s = parse(start), e = parse(addDays(start, 6));
+    lines.push('Week of ' + s.getDate() + ' ' + MONTHS_SHORT[s.getMonth()] + ' to ' + e.getDate() + ' ' + MONTHS_SHORT[e.getMonth()] + ' ' + e.getFullYear());
+    var total = 0;
+    for (var i = 0; i < 7; i++) {
+      var ds = addDays(start, i), day = getDay(ds);
+      if (!day.tasks.length && !day.note) continue;
+      lines.push('');
+      lines.push(DAYS_LONG[i] + ' ' + parse(ds).getDate() + ' ' + MONTHS_SHORT[parse(ds).getMonth()] + (dayHours(day) ? ' (' + hfmt(dayHours(day)) + ')' : ''));
+      day.tasks.forEach(function (t) {
+        var bits = [];
+        if (t.p) bits.push(t.p);
+        if (hnum(t.h)) bits.push(hfmt(hnum(t.h)));
+        lines.push('  ' + (t.done ? '[x] ' : '[ ] ') + t.text + (bits.length ? ' (' + bits.join(', ') + ')' : ''));
+      });
+      if (day.note) lines.push('  Note: ' + day.note.replace(/\s*\n\s*/g, ' '));
+      total += dayHours(day);
+    }
+    if (lines.length === 1) lines.push('', 'Nothing logged this week yet.');
+    else lines.push('', 'Total logged: ' + hfmt(total));
+    return lines.join('\n');
+  }
+
+  function render() { renderWeek(); renderDay(); }
+
+  /* ---------- events ---------- */
+  function flushNote() {
+    if (noteTimer) { clearTimeout(noteTimer.t); var d = noteTimer.d, v = noteTimer.v; noteTimer = null; mutate(d, function (day) { day.note = v; }); }
+  }
+  function goto(d) { flushNote(); sel = d; render(); }
+
+  $('#week').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-date]');
+    if (b) goto(b.getAttribute('data-date'));
+  });
+  $('#prev').addEventListener('click', function () { goto(addDays(sel, -1)); });
+  $('#next').addEventListener('click', function () { goto(addDays(sel, 1)); });
+  $('#todayBtn').addEventListener('click', function () { goto(today()); });
+
+  $('#addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = $('#newText').value.trim();
+    if (!text) return;
+    var p = $('#newProject').value.trim();
+    var h = hnum($('#newHours').value);
+    mutate(sel, function (day) { day.tasks.push({ id: uid(), text: text, p: p, h: h, done: false }); });
+    $('#newText').value = '';
+    $('#newHours').value = '';
+    $('#newText').focus();
+  });
+
+  function taskFrom(el) { var li = el.closest('.task'); return li ? li.getAttribute('data-id') : null; }
+  function editTask(id, fn) {
+    mutate(sel, function (day) { day.tasks.forEach(function (t) { if (t.id === id) fn(t); }); });
+  }
+
+  $('#tasks').addEventListener('change', function (e) {
+    var act = e.target.getAttribute('data-act'), id = taskFrom(e.target);
+    if (!act || !id) return;
+    var v = e.target.value;
+    if (act === 'toggle') { var c = e.target.checked; editTask(id, function (t) { t.done = c; }); }
+    else if (act === 'text') {
+      v = v.trim();
+      if (!v) { render(); return; }
+      editTask(id, function (t) { t.text = v; });
+    }
+    else if (act === 'proj') editTask(id, function (t) { t.p = v.trim(); });
+    else if (act === 'hours') editTask(id, function (t) { t.h = hnum(v); });
+  });
+  $('#tasks').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act="del"]');
+    if (!b) return;
+    var id = taskFrom(b);
+    mutate(sel, function (day) { day.tasks = day.tasks.filter(function (t) { return t.id !== id; }); });
+  });
+
+  $('#carry').addEventListener('click', function (e) {
+    var b = e.target.closest('#carryBtn');
+    if (!b) return;
+    var from = getDay(b.getAttribute('data-from'));
+    var open = from.tasks.filter(function (t) { return !t.done; });
+    mutate(sel, function (day) {
+      open.forEach(function (t) { day.tasks.push({ id: uid(), text: t.text, p: t.p || '', h: 0, done: false }); });
+    });
+  });
+
+  $('#note').addEventListener('input', function (e) {
+    var d = sel, v = e.target.value;
+    if (noteTimer) clearTimeout(noteTimer.t);
+    noteTimer = { d: d, v: v, t: setTimeout(function () { noteTimer = null; mutate(d, function (day) { day.note = v; }); }, 600) };
+  });
+  $('#note').addEventListener('blur', flushNote);
+
+  $('#copyReport').addEventListener('click', function () {
+    var ta = $('#reportText'), hint = $('#copyHint');
+    function fallback() { ta.focus(); ta.select(); hint.textContent = 'Text selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(ta.value).then(function () { hint.textContent = 'Copied.'; }, fallback);
+    } catch (err) { fallback(); }
+  });
+
+  /* ---------- boot ---------- */
+  function startLocal() {
+    loadLocal();
+    loaded = true;
+    setStatus(saveLocal() ? 'Saved in this browser only' : 'Not saved: storage is blocked');
+    render();
+  }
+
+  /* ---------- backup ---------- */
+  $('#exportBtn').addEventListener('click', function () {
+    var hint = $('#backupHint');
+    try {
+      var blob = new Blob([JSON.stringify(days, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'work-log-backup-' + today() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      hint.textContent = 'Backup downloaded.';
+    } catch (err) { hint.textContent = 'Could not create the backup file.'; }
+  });
+  $('#importBtn').addEventListener('click', function () { $('#importFile').click(); });
+  $('#importFile').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0], hint = $('#backupHint');
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var data = JSON.parse(r.result), n = 0;
+        Object.keys(data).forEach(function (k) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(k) && data[k] && Array.isArray(data[k].tasks)) { days[k] = data[k]; n++; }
+        });
+        saveLocal();
+        render();
+        hint.textContent = 'Imported ' + n + ' day' + (n === 1 ? '' : 's') + '.';
+      } catch (err) { hint.textContent = 'That file is not a work log backup.'; }
+      e.target.value = '';
+    };
+    r.readAsText(f);
+  });
+
+  render();
+  startLocal();
+})();
+</script>
+</body>
+</html>
